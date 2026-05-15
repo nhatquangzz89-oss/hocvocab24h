@@ -196,38 +196,73 @@ textarea {
     }
     function speak(text) { window.speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.lang = 'en-US'; u.rate = 0.85; window.speechSynthesis.speak(u); }
     function renderQuiz() {
-        if(!vocabulary[currentIdx]) return;
-        const item = vocabulary[currentIdx];
-        document.getElementById('q-txt').innerText = item.question;
-        document.getElementById('cur-idx').innerText = currentIdx + 1;
-        document.getElementById('q-image').src = item.img;
-        document.getElementById('expl-box').style.display = 'none';
-        document.getElementById('next-btn').style.display = 'none';
-        const container = document.getElementById('options-container');
-        container.innerHTML = '';
-        item.options.forEach((opt, i) => {
-            const div = document.createElement('div');
-            div.className = 'option';
-            div.innerText = opt;
-            div.onclick = () => {
-                document.querySelectorAll('.option').forEach(o => o.style.pointerEvents = 'none');
-                if(i === item.correct) {
-                    div.classList.add('correct');
-                    localStorage.setItem('my_correct_count', parseInt(localStorage.getItem('my_correct_count')||0) + 1);
-                } else {
-                    div.classList.add('wrong');
-                    document.querySelectorAll('.option')[item.correct].classList.add('correct');
-                }
-                const box = document.getElementById('expl-box');
-                box.innerHTML = `<button class="voice-btn" onclick="speak('${item.word}')">🔊</button><b>${item.word}:</b> ${item.explanation}`;
-                box.style.display = 'block';
-                document.getElementById('next-btn').style.display = 'block';
-                speak(item.word);
-            };
-            container.appendChild(div);
-        });
-        localStorage.setItem('my_vocab_idx', currentIdx);
+    const item = vocabulary[currentIdx];
+    if (!item) return;
+
+    // Hiển thị Từ vựng và Phiên âm
+    document.getElementById('q-txt').innerHTML = `
+        <div style="font-size: 1.8rem; font-weight: bold;">${item.word}</div>
+        <div style="font-style: italic; color: var(--text-sub); margin-bottom: 10px;">${item.ipa}</div>
+    `;
+
+    // Cập nhật số thứ tự câu hỏi
+    document.getElementById('cur-idx').innerText = currentIdx + 1;
+
+    // Hiển thị ảnh minh họa từ JSON
+    const qImg = document.getElementById('q-image');
+    if (qImg) {
+        qImg.src = item.image; 
     }
+
+    // Ẩn giải thích và nút tiếp theo khi sang câu mới
+    document.getElementById('expl-box').style.display = 'none';
+    document.getElementById('next-btn').style.display = 'none';
+
+    // Tạo danh sách đáp án
+    const container = document.getElementById('options-container');
+    container.innerHTML = '';
+
+    // Tạo mảng 4 đáp án (1 đúng + 3 nhiễu)
+    const choices = [item.definition];
+    while (choices.length < 4) {
+        const randomItem = vocabulary[Math.floor(Math.random() * vocabulary.length)];
+        if (!choices.includes(randomItem.definition)) {
+            choices.push(randomItem.definition);
+        }
+    }
+    choices.sort(() => Math.random() - 0.5); // Trộn ngẫu nhiên đáp án
+
+    choices.forEach(opt => {
+        const div = document.createElement('div');
+        div.className = 'option';
+        div.innerText = opt;
+        div.onclick = () => {
+            // Khóa không cho bấm nhiều lần
+            document.querySelectorAll('.option').forEach(o => o.style.pointerEvents = 'none');
+            
+            if (opt === item.definition) {
+                div.classList.add('correct');
+                // Cộng điểm nếu muốn
+            } else {
+                div.classList.add('wrong');
+                // Hiện đáp án đúng cho người dùng thấy
+                document.querySelectorAll('.option').forEach(o => {
+                    if (o.innerText === item.definition) o.classList.add('correct');
+                });
+            }
+
+            // Hiện giải thích và phát âm
+            const box = document.getElementById('expl-box');
+            box.innerHTML = `<button class="voice-btn" onclick="speak('${item.word}')">🔊</button><b>${item.word}:</b> ${item.definition}<br><small>${item.example}</small>`;
+            box.style.display = 'block';
+            document.getElementById('next-btn').style.display = 'block';
+            speak(item.word);
+        };
+        container.appendChild(div);
+    });
+
+    localStorage.setItem('my_vocab_idx', currentIdx);
+}
     function next() { if(currentIdx < vocabulary.length - 1) { currentIdx++; renderQuiz(); } else { alert("Đã hết bộ từ này!"); } }
     function prev() { if(currentIdx > 0) { currentIdx--; renderQuiz(); } }
     function saveData() {
