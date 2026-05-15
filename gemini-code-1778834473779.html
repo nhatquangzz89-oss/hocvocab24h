@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vocab Quiz - Voice Edition</title>
+    <style>
+        :root { --primary: #4a90e2; --bg: #f0f4f8; --dark: #2c3e50; --success: #27ae60; --orange: #e67e22; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); display: flex; justify-content: center; padding: 40px 20px; margin: 0; color: var(--dark); }
+        .container { background: white; width: 100%; max-width: 1100px; border-radius: 24px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); overflow: hidden; }
+        .nav-tabs { display: flex; background: #fff; border-bottom: 1px solid #eee; padding: 10px 20px 0; }
+        .nav-tab { padding: 15px 25px; cursor: pointer; font-weight: 600; color: #7f8c8d; border-bottom: 3px solid transparent; transition: 0.3s; display: flex; align-items: center; gap: 8px; }
+        .nav-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; padding: 30px; }
+        .stat-card { background: var(--bg); padding: 25px; border-radius: 18px; text-align: center; border: 1px solid #e1e8ed; }
+        .stat-value { display: block; font-size: 36px; font-weight: 800; color: var(--dark); }
+        .stat-label { color: #7f8c8d; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; }
+        .quiz-body { display: flex; gap: 40px; padding: 30px; min-height: 500px; }
+        .q-part { flex: 1.2; }
+        .i-part { flex: 0.8; display: flex; flex-direction: column; gap: 15px; }
+        #main-img { width: 100%; border-radius: 18px; box-shadow: 0 8px 25px rgba(0,0,0,0.1); object-fit: cover; max-height: 350px; background: #eee; }
+        .progress-mini { height: 10px; background: #eee; border-radius: 5px; margin-bottom: 15px; overflow: hidden; }
+        .progress-fill { height: 100%; width: 0%; background: var(--primary); transition: 0.5s; }
+        .nav-controls { display: flex; align-items: center; justify-content: space-between; background: #f8f9fa; padding: 12px 20px; border-radius: 14px; margin-bottom: 20px; }
+        .jump-input { width: 60px; padding: 6px; border: 1px solid #ccc; border-radius: 8px; text-align: center; }
+        .opt { background: #fff; border: 2px solid #f0f0f0; padding: 18px; border-radius: 14px; margin-bottom: 12px; cursor: pointer; transition: 0.2s; }
+        .opt:hover { border-color: var(--primary); transform: translateX(5px); }
+        .opt.correct { background: #d4edda !important; border-color: #28a745 !important; color: #155724; }
+        .opt.wrong { background: #f8d7da !important; border-color: #dc3545 !important; color: #721c24; }
+        #main-next-btn { background: var(--success); color: white; padding: 18px; border: none; border-radius: 14px; font-size: 18px; font-weight: 800; cursor: pointer; width: 100%; margin-bottom: 20px; display: none; }
+        #expl-box { display:none; padding:20px; background:#fff; border-radius:15px; border-left: 6px solid var(--primary); border: 1px solid #eef2f7; margin-bottom: 15px; position: relative; }
+        .speak-btn { background: var(--primary); color: white; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; position: absolute; right: 15px; top: 15px; display: flex; align-items: center; justify-content: center; font-size: 20px; transition: 0.2s; }
+        .speak-btn:hover { transform: scale(1.1); background: var(--dark); }
+        .page { display: none; }
+        .page.active { display: block; }
+        textarea { width: 100%; height: 300px; border-radius: 15px; border: 2px solid #eee; padding: 20px; box-sizing: border-box; margin-bottom: 20px; }
+        .btn { padding: 12px 24px; border: none; border-radius: 12px; cursor: pointer; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="nav-tabs">
+        <div class="nav-tab active" onclick="showPage('stats', this)">📊 Thống kê</div>
+        <div class="nav-tab" onclick="showPage('quiz', this)">✍️ Học tập (Từ mới)</div>
+        <div class="nav-tab" onclick="showPage('config', this)">⚙️ Cài đặt</div>
+    </div>
+
+    <div id="page-stats" class="page active">
+        <div class="stats-grid">
+            <div class="stat-card"><span class="stat-value" id="stat-total-words">0</span><span class="stat-label">Tổng từ đã tích lũy</span></div>
+            <div class="stat-card"><span class="stat-value" id="stat-days">1</span><span class="stat-label">Ngày hành trình</span></div>
+            <div class="stat-card"><span class="stat-value" id="stat-learned">0</span><span class="stat-label">Câu đúng tích lũy</span></div>
+        </div>
+    </div>
+
+    <div id="page-quiz" class="page">
+        <div id="quiz-content" style="display:none; padding: 30px;">
+            <div class="nav-controls">
+                <button class="btn" onclick="prevQ()">⬅ Trước</button>
+                <div style="font-weight: 600;">Câu: <input type="number" id="jump-input" class="jump-input" onchange="jumpToQ()"> / <span id="max-q">0</span></div>
+                <button class="btn" onclick="nextQ()">Sau ➡</button>
+            </div>
+            <div class="progress-mini"><div id="p-fill" class="progress-fill"></div></div>
+            <div class="quiz-body">
+                <div class="q-part">
+                    <h2 id="q-text">...</h2>
+                    <button id="main-next-btn" onclick="nextQ()">CÂU TIẾP THEO ⮕</button>
+                    <div id="opt-box"></div>
+                </div>
+                <div class="i-part">
+                    <div id="expl-box"></div>
+                    <img id="main-img" src="" alt="Minh họa">
+                </div>
+            </div>
+        </div>
+        <div id="no-data" style="padding: 100px 20px; text-align: center; color: #7f8c8d;"><h3>Sẵn sàng cho bài học mới</h3><p>Dán JSON vào Cài đặt để bắt đầu.</p></div>
+    </div>
+
+    <div id="page-config" class="page" style="padding: 30px;">
+        <h3>Cập nhật bài học mới</h3>
+        <textarea id="json-input" placeholder="Dán mã JSON mới tại đây..."></textarea>
+        <div style="display: flex; gap: 12px;">
+            <button class="btn" style="background:var(--success); color:white;" onclick="saveData()">💾 Bắt đầu học bộ này</button>
+            <button class="btn" style="background:#e74c3c; color:white;" onclick="resetHistory()">🗑️ Xóa sạch lịch sử tích lũy</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let questions = [];
+    let cur = 0;
+
+    window.onload = () => {
+        const savedData = localStorage.getItem('current_quiz_json');
+        if(savedData) {
+            questions = JSON.parse(savedData);
+            document.getElementById('no-data').style.display = 'none';
+            document.getElementById('quiz-content').style.display = 'block';
+            document.getElementById('max-q').innerText = questions.length;
+            cur = parseInt(localStorage.getItem('current_index') || 0);
+            loadQ();
+        }
+        updateStatsUI();
+    };
+
+    function showPage(pageId, element) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+        document.getElementById('page-' + pageId).classList.add('active');
+        element.classList.add('active');
+        updateStatsUI();
+    }
+
+    function speak(text) {
+        window.speechSynthesis.cancel(); // Dừng phát âm cũ nếu đang chạy
+        const msg = new SpeechSynthesisUtterance();
+        msg.text = text;
+        msg.lang = 'en-US'; // Giọng tiếng Anh (Mỹ)
+        msg.rate = 0.9;      // Tốc độ (hơi chậm cho dễ nghe)
+        window.speechSynthesis.speak(msg);
+    }
+
+    function loadQ() {
+        if(!questions.length) return;
+        const q = questions[cur];
+        document.getElementById('q-text').innerText = q.question;
+        document.getElementById('p-fill').style.width = ((cur + 1) / questions.length) * 100 + '%';
+        document.getElementById('main-img').src = q.img || "";
+        document.getElementById('jump-input').value = cur + 1;
+        document.getElementById('expl-box').style.display = 'none';
+        document.getElementById('main-next-btn').style.display = 'none';
+        const box = document.getElementById('opt-box');
+        box.innerHTML = '';
+        q.options.forEach((o, i) => {
+            const b = document.createElement('div');
+            b.className = 'opt';
+            b.innerText = o;
+            b.onclick = () => {
+                document.querySelectorAll('.opt').forEach(el => el.style.pointerEvents = 'none');
+                if(i === q.correct) {
+                    b.classList.add('correct');
+                    localStorage.setItem('learned_count', parseInt(localStorage.getItem('learned_count') || 0) + 1);
+                } else {
+                    b.classList.add('wrong');
+                    document.querySelectorAll('.opt')[q.correct].classList.add('correct');
+                }
+                
+                // Hiển thị giải thích kèm nút Loa
+                document.getElementById('expl-box').innerHTML = `
+                    <button class="speak-btn" onclick="speak('${q.word}')">🔊</button>
+                    💡 <b>${q.word} (${q.ipa}):</b><br>${q.explanation}
+                `;
+                document.getElementById('expl-box').style.display = 'block';
+                document.getElementById('main-next-btn').style.display = 'block';
+                
+                // Tự động phát âm khi trả lời xong
+                speak(q.word);
+            };
+            box.appendChild(b);
+        });
+        localStorage.setItem('current_index', cur);
+    }
+
+    function nextQ() { cur < questions.length - 1 ? (cur++, loadQ()) : alert("Đã hoàn thành bộ này!"); }
+    function prevQ() { if(cur > 0) { cur--; loadQ(); } }
+    function jumpToQ() {
+        let v = parseInt(document.getElementById('jump-input').value) - 1;
+        if(v >= 0 && v < questions.length) { cur = v; loadQ(); }
+    }
+
+    function saveData() {
+        const raw = document.getElementById('json-input').value;
+        try {
+            const newData = JSON.parse(raw);
+            localStorage.setItem('current_quiz_json', raw);
+            localStorage.setItem('current_index', 0);
+            let masterList = JSON.parse(localStorage.getItem('master_vocab_list') || "[]");
+            newData.forEach(item => {
+                if(!masterList.includes(item.word.toLowerCase().trim())) masterList.push(item.word.toLowerCase().trim());
+            });
+            localStorage.setItem('master_vocab_list', JSON.stringify(masterList));
+            localStorage.setItem('total_words_accumulated', masterList.length);
+            if(!localStorage.getItem('first_date')) localStorage.setItem('first_date', new Date().toISOString());
+            alert("Đã cập nhật bài học mới!");
+            location.reload();
+        } catch(e) { alert("Lỗi định dạng JSON!"); }
+    }
+
+    function updateStatsUI() {
+        document.getElementById('stat-total-words').innerText = localStorage.getItem('total_words_accumulated') || 0;
+        document.getElementById('stat-learned').innerText = localStorage.getItem('learned_count') || 0;
+        const first = localStorage.getItem('first_date');
+        if(first) {
+            const diff = Math.floor((new Date() - new Date(first)) / 86400000) + 1;
+            document.getElementById('stat-days').innerText = diff;
+        }
+    }
+
+    function resetHistory() {
+        if(confirm("Xóa sạch toàn bộ lịch sử tích lũy?")) {
+            localStorage.clear();
+            location.reload();
+        }
+    }
+</script>
+</body>
+</html>
